@@ -1,10 +1,16 @@
-import { View, Alert, StyleSheet } from 'react-native';
+import { View, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { PlatformPay, StripeProvider, usePlatformPay, createPlatformPayPaymentMethod } from '@stripe/stripe-react-native';
 import axios from 'axios';
-import React from 'react';
+import React, { useRef, useState } from 'react';
 
 const App = () => {
+  //Ref
+  const webViewRef = useRef(null);
+
+  const [paymentCompleted, setPayementCompleted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const {
     isPlatformPaySupported,
     confirmPlatformPayPayment,
@@ -12,7 +18,8 @@ const App = () => {
   React.useEffect(() => {
     (async function () {
       if (!(await isPlatformPaySupported({ googlePay: { testEnv: true } }))) {
-        Alert.alert('Google Pay is not supported.');
+        console.log('Google Pay is not supported.');
+        setLoading(false);
         return;
       }
     })();
@@ -41,19 +48,16 @@ const App = () => {
       Alert.alert(error.code, error.message);
       return;
     } else if (paymentMethod) {
-      Alert.alert(
-        'Success',
-        `The payment method was created successfully. paymentMethodId: ${paymentMethod.id}`
-      );
+      setLoading(false)
     }
   };
+
   const fetchPaymentIntentClientSecret = async () => {
     const apiUrl = 'https://amplepoints.com/apiendpoint/createpaymentintend?user_id=126&total_amount=118.00&order_id=AMPLI9Zd27&customer_name=Hiren Buhecha';
 
     const response = await axios.get(apiUrl);
-    console.log("Response", response.data.data)
+    
     if (response && response.data && response.data.data.clientSecret) {
-
       return response.data.data.clientSecret;
     };
   }
@@ -87,23 +91,23 @@ const App = () => {
       }
     );
     if (error) {
-      // handle error
+      Alert.alert(error.code, error.message);
     } else {
-      Alert.alert('Success', 'Check the logs for payment intent details.');
+      setLoading(false);
     }
 
   }
 
   const pay = async () => {
-
+    setLoading(false);
     const clientSecret = await fetchPaymentIntentClientSecret();
-    console.log("Client", clientSecret)
+
     const { error } = await confirmPlatformPayPayment(
       clientSecret,
       {
         googlePay: {
           testEnv: true,
-          merchantName: 'JHassnian Ali',
+          merchantName: 'Hassnian Ali',
           merchantCountryCode: 'US',
           currencyCode: 'USD',
           billingAddressConfig: {
@@ -115,19 +119,40 @@ const App = () => {
       }
     );
 
-    if (error) {
-      Alert.alert(error.code, error.message);
+    if (error?.code == "Canceled") {
+      Alert.alert('Payment Canceled', 'The payment was canceled.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            if (webViewRef.current) {
+              webViewRef.current.goBack();
+            }
+          },
+        },
+      ]);
       return;
     }
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        document.querySelector('.btn.type01').click();
+      `);
+    }
+      setLoading(false);
+      return;
+    
+
   };
 
 
   const onMessage = (event) => {
     const message = event.nativeEvent.data;
     if (message === 'Button Pressed') {
+      setLoading(true);
       pay();
     }
   };
+
+  //Method that handles navigation
   const injectedJavaScript = `
   (function() {
     var radio = document.getElementById('grade02');
@@ -142,18 +167,25 @@ const App = () => {
       }
     });
   })();
+
 `;
   return (
     <StripeProvider publishableKey='pk_test_51 NpOZ4GY4n5u6WbIlWOsccAKTTMLq7xnjfG8fFboidp6jZCx2XlssuBHyNbvBsqfGDkbVkZH2Knka498eIzAjdPZ00YZBjdzik'>
 
       <View style={styles.container}>
         <WebView
+          ref={webViewRef}
           source={{ uri: 'https://matchfy.net/' }}
           onMessage={onMessage}
           originWhitelist={['*']}
           javaScriptEnabled={true}
           injectedJavaScript={injectedJavaScript}
         />
+        {loading && (
+          <View style={styles.loading}>
+            <ActivityIndicator size="large" color="#F10261" />
+          </View>
+        )}
       </View>
     </StripeProvider>
   );
@@ -162,6 +194,12 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loading: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
 });
 
