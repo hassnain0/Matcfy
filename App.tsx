@@ -1,117 +1,167 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
+import { View, Alert, StyleSheet } from 'react-native';
+import { WebView } from 'react-native-webview';
+import { PlatformPay, StripeProvider, usePlatformPay, createPlatformPayPaymentMethod } from '@stripe/stripe-react-native';
+import axios from 'axios';
 import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
+const App = () => {
+  const {
+    isPlatformPaySupported,
+    confirmPlatformPayPayment,
+  } = usePlatformPay();
+  React.useEffect(() => {
+    (async function () {
+      if (!(await isPlatformPaySupported({ googlePay: { testEnv: true } }))) {
+        Alert.alert('Google Pay is not supported.');
+        return;
+      }
+    })();
+  }, []);
+  const createPaymentMethod = async () => {
+    const { error, paymentMethod } = await createPlatformPayPaymentMethod({
+      applePay: {
+        cartItems: [
           {
-            color: isDarkMode ? Colors.white : Colors.black,
+            label: 'Example item name',
+            amount: '14.00',
+            paymentType: PlatformPay.PaymentType.Immediate,
           },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
           {
-            color: isDarkMode ? Colors.light : Colors.dark,
+            label: 'Total',
+            amount: '12.75',
+            paymentType: PlatformPay.PaymentType.Immediate,
           },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+        ],
+        merchantCountryCode: 'US',
+        currencyCode: 'USD',
+      },
+    });
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+    if (error) {
+      Alert.alert(error.code, error.message);
+      return;
+    } else if (paymentMethod) {
+      Alert.alert(
+        'Success',
+        `The payment method was created successfully. paymentMethodId: ${paymentMethod.id}`
+      );
+    }
+  };
+  const fetchPaymentIntentClientSecret = async () => {
+    const apiUrl = 'https://amplepoints.com/apiendpoint/createpaymentintend?user_id=126&total_amount=118.00&order_id=AMPLI9Zd27&customer_name=Hiren Buhecha';
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    const response = await axios.get(apiUrl);
+    console.log("Response", response.data.data)
+    if (response && response.data && response.data.data.clientSecret) {
+
+      return response.data.data.clientSecret;
+    };
+  }
+
+  const payApple = async () => {
+
+    const clientSecret = await fetchPaymentIntentClientSecret()
+    const { error } = await confirmPlatformPayPayment(
+      clientSecret,
+      {
+        applePay: {
+          cartItems: [
+            {
+              label: 'Example item name',
+              amount: '14.00',
+              paymentType: PlatformPay.PaymentType.Immediate,
+            },
+            {
+              label: 'Total',
+              amount: '12.75',
+              paymentType: PlatformPay.PaymentType.Immediate,
+            },
+          ],
+          merchantCountryCode: 'US',
+          currencyCode: 'USD',
+          requiredShippingAddressFields: [
+            PlatformPay.ContactField.PostalAddress,
+          ],
+          requiredBillingContactFields: [PlatformPay.ContactField.PhoneNumber],
+        },
+      }
+    );
+    if (error) {
+      // handle error
+    } else {
+      Alert.alert('Success', 'Check the logs for payment intent details.');
+    }
+
+  }
+
+  const pay = async () => {
+
+    const clientSecret = await fetchPaymentIntentClientSecret();
+    console.log("Client", clientSecret)
+    const { error } = await confirmPlatformPayPayment(
+      clientSecret,
+      {
+        googlePay: {
+          testEnv: true,
+          merchantName: 'JHassnian Ali',
+          merchantCountryCode: 'US',
+          currencyCode: 'USD',
+          billingAddressConfig: {
+            format: PlatformPay.BillingAddressFormat.Full,
+            isPhoneNumberRequired: true,
+            isRequired: true,
+          },
+        },
+      }
+    );
+
+    if (error) {
+      Alert.alert(error.code, error.message);
+      return;
+    }
   };
 
+
+  const onMessage = (event) => {
+    const message = event.nativeEvent.data;
+    if (message === 'Button Pressed') {
+      pay();
+    }
+  };
+  const injectedJavaScript = `
+  (function() {
+    var radio = document.getElementById('grade02');
+    var buttons = document.querySelectorAll('.btn.type01');
+    radio.addEventListener('change', function() {
+      if (this.checked) {
+        buttons.forEach(function(button) {
+             button.addEventListener('click', function() {
+                 window.ReactNativeWebView.postMessage('Button Pressed');
+               });
+             });
+      }
+    });
+  })();
+`;
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <StripeProvider publishableKey='pk_test_51 NpOZ4GY4n5u6WbIlWOsccAKTTMLq7xnjfG8fFboidp6jZCx2XlssuBHyNbvBsqfGDkbVkZH2Knka498eIzAjdPZ00YZBjdzik'>
+
+      <View style={styles.container}>
+        <WebView
+          source={{ uri: 'https://matchfy.net/' }}
+          onMessage={onMessage}
+          originWhitelist={['*']}
+          javaScriptEnabled={true}
+          injectedJavaScript={injectedJavaScript}
+        />
+      </View>
+    </StripeProvider>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  container: {
+    flex: 1,
   },
 });
 
