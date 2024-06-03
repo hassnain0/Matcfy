@@ -56,7 +56,7 @@ const App = () => {
     const apiUrl = 'https://amplepoints.com/apiendpoint/createpaymentintend?user_id=126&total_amount=118.00&order_id=AMPLI9Zd27&customer_name=Hiren Buhecha';
 
     const response = await axios.get(apiUrl);
-    
+
     if (response && response.data && response.data.data.clientSecret) {
       return response.data.data.clientSecret;
     };
@@ -120,37 +120,35 @@ const App = () => {
     );
 
     if (error?.code == "Canceled") {
-      Alert.alert('Payment Canceled', 'The payment was canceled.', [
-        {
-          text: 'OK',
-          onPress: () => {
-            if (webViewRef.current) {
-              webViewRef.current.goBack();
-            }
-          },
-        },
-      ]);
+      if (webViewRef.current) {
+        try {
+          webViewRef.current.goBack();
+        }
+        catch (error) {
+          console.log("Error", error)
+        }
+      }
       return;
     }
-    if (webViewRef.current) {
-      webViewRef.current.injectJavaScript(`
-        document.querySelector('.btn.type01').click();
-      `);
-    }
-      setLoading(false);
-      return;
-    
+
+    setLoading(false);
+    return;
+
 
   };
 
 
   const onMessage = (event) => {
     const message = event.nativeEvent.data;
+    console.log("Called")
     if (message === 'Button Pressed') {
+    
       setLoading(true);
       pay();
     }
   };
+
+
 
   //Method that handles navigation
   const injectedJavaScript = `
@@ -160,10 +158,10 @@ const App = () => {
     radio.addEventListener('change', function() {
       if (this.checked) {
         buttons.forEach(function(button) {
-             button.addEventListener('click', function() {
-                 window.ReactNativeWebView.postMessage('Button Pressed');
-               });
-             });
+          button.addEventListener('click', function() {
+            window.ReactNativeWebView.postMessage('Button Pressed');
+          });
+        });
       }
     });
   })();
@@ -179,6 +177,8 @@ const App = () => {
           onMessage={onMessage}
           originWhitelist={['*']}
           javaScriptEnabled={true}
+          onLoadStart={() => setLoading(true)}
+          onLoad={() => setLoading(false)}
           injectedJavaScript={injectedJavaScript}
         />
         {loading && (
