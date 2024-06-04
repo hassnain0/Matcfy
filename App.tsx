@@ -8,7 +8,6 @@ const App = () => {
   //Ref
   const webViewRef = useRef(null);
 
-  const [paymentCompleted, setPayementCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const {
@@ -122,7 +121,7 @@ const App = () => {
     if (error?.code == "Canceled") {
       if (webViewRef.current) {
         try {
-          webViewRef.current.goBack();
+          webViewRef.current.injectJavaScript(`window.location.href = "https://matchfy.net/mo/upgradeGrade";`);
         }
         catch (error) {
           console.log("Error", error)
@@ -140,15 +139,11 @@ const App = () => {
 
   const onMessage = (event) => {
     const message = event.nativeEvent.data;
-    console.log("Called")
     if (message === 'Button Pressed') {
-    
       setLoading(true);
       pay();
     }
   };
-
-
 
   //Method that handles navigation
   const injectedJavaScript = `
@@ -165,7 +160,6 @@ const App = () => {
       }
     });
   })();
-
 `;
   return (
     <StripeProvider publishableKey='pk_test_51 NpOZ4GY4n5u6WbIlWOsccAKTTMLq7xnjfG8fFboidp6jZCx2XlssuBHyNbvBsqfGDkbVkZH2Knka498eIzAjdPZ00YZBjdzik'>
