@@ -1,4 +1,4 @@
-import {View, Alert, StyleSheet, ActivityIndicator} from 'react-native';
+import {View, Alert, StyleSheet, ActivityIndicator, Button} from 'react-native';
 import {WebView} from 'react-native-webview';
 import {
   PlatformPay,
@@ -8,7 +8,7 @@ import {
 } from '@stripe/stripe-react-native';
 import axios from 'axios';
 import React, {useRef, useState} from 'react';
-
+import {showNotification,handleScheduleNotification,handleCancel } from './src/Notification';
 const App = () => {
   //Ref
   const webViewRef = useRef(null);
@@ -158,6 +158,7 @@ const App = () => {
   return (
     <StripeProvider publishableKey="pk_test_51 NpOZ4GY4n5u6WbIlWOsccAKTTMLq7xnjfG8fFboidp6jZCx2XlssuBHyNbvBsqfGDkbVkZH2Knka498eIzAjdPZ00YZBjdzik">
       <View style={styles.container}>
+       <Button title='Hello' onPress={()=>showNotification("Hi","Hassnain")}></Button>
         <WebView
           ref={webViewRef}
           source={{uri: 'https://matchfy.net/'}}
